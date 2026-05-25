@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>附近vivo门店</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f5f5f5; min-height: 100vh; padding-bottom: 20px;}
+.header { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: #fff; padding: 24px 16px 20px; text-align: center; }
+.header h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; letter-spacing: .5px; }
+.header p { font-size: 13px; opacity: .85; }
+.tip { text-align:center; font-size:12px; color:#aaa; padding:10px 16px 2px; }
+.store-list { padding: 8px 12px; }
+.store-card { background:#fff; border-radius:14px; padding:16px 16px 14px; margin-bottom:10px; box-shadow:0 1px 4px rgba(0,0,0,.07); position:relative; }
+.store-card .top { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+.store-card h3 { font-size:15px; font-weight:600; color:#111; line-height:1.4; flex:1; }
+.store-card .dist { flex-shrink:0; background:#eef2ff; color:#3b82f6; font-size:12px; font-weight:600; padding:3px 10px; border-radius:20px; white-space:nowrap; margin-top:1px; }
+.store-card .addr { font-size:13px; color:#555; margin-top:8px; line-height:1.5; padding-left:22px; position:relative; }
+.store-card .addr::before { content:''; position:absolute; left:0; top:3px; width:14px; height:14px; background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233b82f6' stroke-width='2'%3E%3Cpath d='M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z'/%3E%3Ccircle cx='12' cy='10' r='3'/%3E%3C/svg%3E") no-repeat center/contain; }
+.store-card .tel { font-size:13px; color:#3b82f6; margin-top:6px; padding-left:22px; position:relative; font-weight:500; }
+.store-card .tel::before { content:''; position:absolute; left:0; top:2px; width:14px; height:14px; background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233b82f6' stroke-width='2'%3E%3Cpath d='M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z'/%3E%3C/svg%3E") no-repeat center/contain; }
+.store-card .btns { display:flex; gap:8px; margin-top:12px; }
+.store-card .btns a { flex:1; text-align:center; padding:9px 0; border-radius:10px; font-size:13px; font-weight:600; text-decoration:none; }
+.btn-call { background:#3b82f6; color:#fff; }
+.btn-nav { background:#f0f4ff; color:#3b82f6; }
+.loading { text-align:center; padding:50px 20px; color:#999; font-size:14px; }
+.loading span { display:inline-block; animation:pulse 1.2s infinite; }
+.loading span:nth-child(2){ animation-delay:.2s; }
+.loading span:nth-child(3){ animation-delay:.4s; }
+@keyframes pulse { 0%,100%{opacity:.3} 50%{opacity:1} }
+.empty { text-align:center; padding:60px 20px; color:#bbb; font-size:14px; }
+.empty svg { width:48px; height:48px; margin-bottom:12px; opacity:.3; }
+.retry-btn { display:inline-block; margin-top:14px; padding:8px 24px; background:#3b82f6; color:#fff; border:none; border-radius:8px; font-size:13px; cursor:pointer; }
+/* 定位失败提示 */
+.loc-tip { background:#fffbe6; color:#b8860b; font-size:12px; text-align:center; padding:8px 12px; margin:8px 12px 0; border-radius:8px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📍 vivo门店查询</h1>
+  <p>自动定位 · 按距离排序 · 一键导航</p>
+</div>
+
+<div id="loading" class="loading">
+  正在获取您的位置<span><span>.</span><span>.</span><span>.</span></span>
+</div>
+
+<div id="loc-tip" class="loc-tip" style="display:none">
+  ⚠️ 无法获取定位，已按默认顺序展示门店。可在浏览器中允许定位权限后刷新重试。
+</div>
+
+<div id="store-list" class="store-list"></div>
+
+<div id="empty" class="empty" style="display:none">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+  <p>暂无门店数据</p>
+</div>
+
+<div class="tip">数据仅供参考，到店前请电话确认营业时间</div>
+
+<script>
+// ========== 门店数据（已全部填入经纬度）==========
+const STORES = [
+  { name:"烟台龙口龙湖天街vivo体验店", addr:"黄县港城大道777号龙口天街B1-11", tel:"13853536940", lat:37.647691, lng:120.499371 },
+  { name:"威海荣成黄海南路vivo体验店", addr:"石岛镇黄海南路125号vivo体验店", tel:"13606495560", lat:36.890332, lng:122.434538 },
+  { name:"烟台福山万科城市广场vivo体验店", addr:"福海路318号万科城市之光29号楼万科广场一层110室", tel:"19026296078", lat:37.519257, lng:121.263447 },
+  { name:"烟台海阳市海政路金海螺体验店", addr:"海政路金海螺商业广场4号楼vivo体验店", tel:"0535-3220369", lat:36.783767, lng:121.173491 },
+  { name:"烟台开发区万达vivo专卖店", addr:"开发区万达广场一楼vivo体验店（1008A）", tel:"0535-2131588", lat:37.551893, lng:121.260204 },
+  { name:"烟台开发区永旺梦乐城vivo专卖店", addr:"开发区长江路120号永旺梦乐城1楼169-170号vivo体验店", tel:"0535-2169589", lat:37.574266, lng:121.196261 },
+  { name:"烟台莱山万象汇vivo体验店", addr:"莱山区观海路228号烟台万象汇4楼L418号vivo体验店", tel:"0535-6281776", lat:37.477848, lng:121.457385 },
+  { name:"烟台莱山新世界vivo体验中心", addr:"莱山区新世界百货1楼vivo体验店", tel:"0535-6711589", lat:37.485834, lng:121.458235 },
+  { name:"烟台莱阳市五龙北路vivo体验店", addr:"五龙北路150号vivo体验店（移动公司南）", tel:"0535-2150535", lat:36.977609, lng:120.714252 },
+  { name:"烟台龙口保利vivo专卖店", addr:"黄县港城大道666号保利广场一楼vivo体验店", tel:"18105350346", lat:37.644557, lng:120.509939 },
+  { name:"烟台龙口市黄县东莱街iQOO体验店", addr:"黄县东莱街第二实验小学北邻iQOO体验店", tel:"0535-3120012", lat:37.650264, lng:120.536543 },
+  { name:"烟台龙口市黄县东莱街vivo体验店", addr:"黄县东莱街vivo体验店（招金银楼正对面）", tel:"0535-3120011", lat:37.650498, lng:120.535784 },
+  { name:"烟台牟平区通海路vivo体验店", addr:"牟平区通海路369号vivo授权体验店（交通银行对面）", tel:"0535-3395577", lat:37.403575, lng:121.604299 },
+  { name:"烟台蓬莱钟楼东路vivo专卖店", addr:"钟楼东路37号vivo体验店", tel:"0535-3350181", lat:37.814136, lng:120.775105 },
+  { name:"烟台招远市府前广场vivo体验店", addr:"状元街7号府前广场vivo体验店", tel:"0535-8933733", lat:37.366456, lng:120.411329 },
+  { name:"烟台芝罘大悦城vivo体验店", addr:"芝罘区北马路150号大悦城1楼1F-14Avivo体验店", tel:"19353516193", lat:37.551185, lng:121.393880 },
+  { name:"烟台芝罘区万达vivo体验店", addr:"芝罘区西关南街6号万达广场1楼vivo体验店", tel:"0535-2111198", lat:37.541353, lng:121.402060 },
+  { name:"烟台芝罘区吾悦广场vivo体验店", addr:"芝罘区芝罘屯路18号芝罘吾悦广场1层vivo体验店", tel:"0535-2111168", lat:37.556451, lng:121.376841 },
+  { name:"烟台芝罘区西大街vivo体验店", addr:"芝罘区西大街118号创进大厦东侧vivo体验店", tel:"0535-6095096", lat:37.549271, lng:121.388698 },
+  { name:"烟台芝罘区新都汇vivo专卖店", addr:"芝罘区南尧新都汇一楼vivo体验店", tel:"18105355409", lat:37.514341, lng:121.372616 }
+];
+// ===================================================
+
+function haversine(lat1,lng1,lat2,lng2){
+  const R=6371, dLat=(lat2-lat1)*Math.PI/180, dLng=(lng2-lng1)*Math.PI/180;
+  const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+function fmtDist(d){
+  if(d<1) return (d*1000).toFixed(0)+'米';
+  return d.toFixed(1)+'公里';
+}
+
+function render(list){
+  const box=document.getElementById('store-list');
+  if(!list.length){ document.getElementById('empty').style.display='block'; return; }
+  document.getElementById('empty').style.display='none';
+  box.innerHTML=list.map(s=>`
+    <div class="store-card">
+      <div class="top">
+        <h3>${s.name}</h3>
+        ${s.dist!=null?`<span class="dist">${fmtDist(s.dist)}</span>`:''}
+      </div>
+      <div class="addr">${s.addr}</div>
+      <div class="tel">${s.tel}</div>
+      <div class="btns">
+        <a class="btn-call" href="tel:${s.tel.replace(/[^0-9]/g,'')}">📞 拨打电话</a>
+        <a class="btn-nav" href="https://uri.amap.com/navigation?to=${s.lng},${s.lat},${encodeURIComponent(s.name)}&mode=car" target="_blank">🧭 导航到店</a>
+      </div>
+    </div>
+  `).join('');
+}
+
+function start(){
+  document.getElementById('loading').style.display='none';
+  if(!navigator.geolocation){ render(STORES); return; }
+  navigator.geolocation.getCurrentPosition(
+    pos=>{
+      const uLat=pos.coords.latitude, uLng=pos.coords.longitude;
+      const list=STORES.map(s=>({...s,dist:haversine(uLat,uLng,s.lat,s.lng)})).sort((a,b)=>a.dist-b.dist);
+      render(list);
+    },
+    ()=>{
+      document.getElementById('loc-tip').style.display='block';
+      render(STORES);
+    },
+    {enableHighAccuracy:true,timeout:8000}
+  );
+}
+
+// 延迟一点启动，让页面先渲染
+setTimeout(start, 300);
+</script>
+</body>
+</html>
